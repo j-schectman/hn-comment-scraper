@@ -1,18 +1,9 @@
-(ql:quickload '("dexador" "plump" "lquery" "str"))
+(ql:quickload '("dexador" "plump" "lquery"))
 (defparameter *hn-root-url* "https://news.ycombinator.com")
 (defparameter *request* (dex:get (concatenate 'string *hn-root-url* "/news?p=" "1") ))
 (defparameter *parsed-content* (lquery:$ (initialize *request*)))
 (defparameter *results-file* "results.txt")
 (defparameter *result-ids-file* "results-ids.txt")
-
-(defparameter *temp* (let* ((result (dex:get (concatenate 'string *hn-root-url* "/" "item?id=31344981")))
-        (parsed-content (lquery:$ (initialize result))))
-   (lquery:$ parsed-content ".commtext" (text))))
-(defparameter *temp* (dex:get (concatenate 'string *hn-root-url* "/" "item?id=31344981")))
-(let ((tmp (lquery:$ (initialize *temp*) ".commtext" (chldren) (map-apply #'()))))
-  (print tmp)
-  )
-(print (lquery:$ (lquery:$ (initialize *temp*)) ".commtext"))
 
 (defparameter *comment-urls* 
   (remove-duplicates 
@@ -25,8 +16,14 @@
 (defun get-comments-for-id (id-string)
   (handler-case
     (let* ((result (dex:get (concatenate 'string *hn-root-url* "/" id-string)))
-           (parsed-content (lquery:$ (initialize result))))
-      (lquery:$ parsed-content ".commtext" (html)))
+           (node-queue (lquery:$ (initialize result) ".commtext")))
+      (loop for comm = (vector-pop node-queue)
+        if (plump:text-node-p comm)
+          collect (lquery-funcs:text comm)
+        else
+          do (loop for n across (reverse (lquery-funcs:contents comm)) do (vector-push n node-queue))
+        while (> (length node-queue) 0))
+      )
     ; Just ignore failed requests, we're lazy and it doesn't maatter
     (dex:http-request-failed (e)
                              (print (list "failed to get" id-string "with error" e) )
@@ -42,7 +39,7 @@
           while line collect line))) 
 
 (defun save-comments-to-output (comments id output)
-  (loop for comment across comments
+  (loop for comment in comments
         do (format output "~a~%" comment))
   (with-open-file 
     (stream *result-ids-file*
