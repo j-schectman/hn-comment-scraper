@@ -39,8 +39,7 @@
           while line collect line))) 
 
 (defun save-comments-to-output (comments id output)
-  (loop for comment in comments
-        do (format output "~a~%" comment))
+  (format output "~{~a~^ ~}~%" comments)
   (with-open-file 
     (stream *result-ids-file*
             :direction :output 
