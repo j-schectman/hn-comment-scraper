@@ -17,12 +17,12 @@
   (handler-case
     (let* ((result (dex:get (concatenate 'string *hn-root-url* "/" id-string)))
            (node-queue (lquery:$ (initialize result) ".commtext")))
-      (loop for comm = (vector-pop node-queue)
-        if (plump:text-node-p comm)
-          collect (lquery-funcs:text comm)
-        else
-          do (loop for n across (reverse (lquery-funcs:contents comm)) do (vector-push n node-queue))
-        while (> (length node-queue) 0))
+      (reverse (loop for comm = (vector-pop node-queue)
+             if (plump:text-node-p comm)
+             collect (lquery-funcs:text comm)
+             else
+             do (loop for n across (lquery-funcs:contents comm) do (vector-push n node-queue))
+             while (> (length node-queue) 0)))
       )
     ; Just ignore failed requests, we're lazy and it doesn't maatter
     (dex:http-request-failed (e)
