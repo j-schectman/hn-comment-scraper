@@ -13,6 +13,16 @@
     :test 'equal
     ))
 
+(defun flatten-comment (comment)
+  (let ((comment-queue (list comment))) 
+    (loop for to-flatten = (pop comment-queue)
+         if (plump:text-node-p to-flatten)
+         collect (lquery-funcs:text to-flatten)
+         else
+         do (loop for n across (lquery-funcs:contents to-flatten) do (vector-push n node-queue))
+         while (> (length comment-queue) 0)))
+  )
+
 (defun get-comments-for-id (id-string)
   (handler-case
     (let* ((result (dex:get (concatenate 'string *hn-root-url* "/" id-string)))
@@ -37,7 +47,7 @@
     (loop for 
           line = (read-line results-ids-file nil)
           while line collect line))) 
-
+(format t "~{~a~^ ~}~%" (list 1 2 (list 3 4) 5 "asd"))
 (defun save-comments-to-output (comments id output)
   (format output "~{~a~^ ~}~%" comments)
   (with-open-file 
