@@ -13,26 +13,39 @@
     :test 'equal
     ))
 
+(format nil "~:[~a~;~:*~a~%~a~]" "word" "word")
+
 (defun flatten-comment (comment)
-  (let ((comment-queue (list comment))) 
+  (let ((comment-queue (list comment)) (formatted-comment nil)) 
     (loop for to-flatten = (pop comment-queue)
-         if (plump:text-node-p to-flatten)
-         collect (lquery-funcs:text to-flatten)
-         else
-         do (loop for n across (lquery-funcs:contents to-flatten) do (vector-push n node-queue))
-         while (> (length comment-queue) 0)))
+          do (print formatted-comment)
+          if (and 
+               (plump:element-p to-flatten)
+               (find (plump:tag-name to-flatten) (list "span" "p") :test 'equal))
+          do (loop for n across (lquery-funcs:contents to-flatten) 
+                   do (push n comment-queue))
+          else
+          do (setf formatted-comment 
+                   (format 
+                     nil 
+                     (if (equal (plump:tag-name (plump:parent to-flatten)) "p")
+                         "~:[~a~;~a~%~:*~a~]" 
+                         "~:[~a~;~a ~:*~a~]" 
+                         )
+                     formatted-comment 
+                     (lquery-funcs:render-text to-flatten)))
+          while (> (length comment-queue) 0))
+    formatted-comment
+    )
   )
 
 (defun get-comments-for-id (id-string)
   (handler-case
     (let* ((result (dex:get (concatenate 'string *hn-root-url* "/" id-string)))
-           (node-queue (lquery:$ (initialize result) ".commtext")))
-      (reverse (loop for comm = (vector-pop node-queue)
-             if (plump:text-node-p comm)
-             collect (lquery-funcs:text comm)
-             else
-             do (loop for n across (lquery-funcs:contents comm) do (vector-push n node-queue))
-             while (> (length node-queue) 0)))
+           (comments (lquery:$ (initialize result) ".commtext")))
+      (loop for comment across comments
+            collect (flatten-comment comment)
+            )
       )
     ; Just ignore failed requests, we're lazy and it doesn't maatter
     (dex:http-request-failed (e)
@@ -47,9 +60,9 @@
     (loop for 
           line = (read-line results-ids-file nil)
           while line collect line))) 
-(format t "~{~a~^ ~}~%" (list 1 2 (list 3 4) 5 "asd"))
+
 (defun save-comments-to-output (comments id output)
-  (format output "~{~a~^ ~}~%" comments)
+  (if (> (length comments) 0) (format output "~{[comment-start]~a~^[comment-end]~%~}" comments))
   (with-open-file 
     (stream *result-ids-file*
             :direction :output 
@@ -64,10 +77,10 @@
    :if-exists :append)
  (let ((already-scraped-ids (get-already-scraped-ids)))
     (loop for id across *comment-urls*
-          for _ in (list 1 3 4)
+          for x in (list 1 2)
           unless (find id already-scraped-ids :test 'equal)
           do (progn 
-               (sleep 1)
+               (sleep 3)
                (print (list "getting comment for" id))
                (push id already-scraped-ids)
                (save-comments-to-output (get-comments-for-id id) id results-file)))) )
