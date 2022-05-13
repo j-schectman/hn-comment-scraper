@@ -22,15 +22,15 @@
           if (and 
                (plump:element-p to-flatten)
                (find (plump:tag-name to-flatten) (list "span" "p") :test 'equal))
-          do (loop for n across (lquery-funcs:contents to-flatten) 
+          do (loop for n across (reverse (lquery-funcs:contents to-flatten)) 
                    do (push n comment-queue))
           else
           do (setf formatted-comment 
                    (format 
                      nil 
                      (if (equal (plump:tag-name (plump:parent to-flatten)) "p")
-                         "~:[~a~;~a~%~:*~a~]" 
-                         "~:[~a~;~a ~:*~a~]" 
+                         "~:[~a~;~:*~a~%~a~]" 
+                         "~:[~a~;~:*~a ~a~]" 
                          )
                      formatted-comment 
                      (lquery-funcs:render-text to-flatten)))
