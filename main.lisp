@@ -29,7 +29,7 @@
                    (format 
                      nil 
                      (if (equal (plump:tag-name (plump:parent to-flatten)) "p")
-                         "~:[~a~;~:*~a~%~a~]" 
+                         "~:[~a~;~:*~a~%~%~a~]" 
                          "~:[~a~;~:*~a ~a~]" 
                          )
                      formatted-comment 
