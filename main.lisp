@@ -1,6 +1,6 @@
 (ql:quickload '("dexador" "plump" "lquery"))
 (defparameter *hn-root-url* "https://news.ycombinator.com")
-(defparameter *request* (dex:get (concatenate 'string *hn-root-url* "/news?p=" "1") ))
+(defparameter *request* (dex:get (concatenate 'string *hn-root-url* "/news") ))
 (defparameter *parsed-content* (lquery:$ (initialize *request*)))
 (defparameter *results-file* "results.txt")
 (defparameter *result-ids-file* "results-ids.txt")
@@ -18,17 +18,22 @@
 (defun flatten-comment (comment)
   (let ((comment-queue (list comment)) (formatted-comment nil)) 
     (loop for to-flatten = (pop comment-queue)
-          do (print formatted-comment)
           if (and 
                (plump:element-p to-flatten)
                (find (plump:tag-name to-flatten) (list "span" "p") :test 'equal))
+          ; Need to reverse when we add to queue so that text nodes are processed first
           do (loop for n across (reverse (lquery-funcs:contents to-flatten)) 
                    do (push n comment-queue))
           else
           do (setf formatted-comment 
                    (format 
                      nil 
-                     (if (equal (plump:tag-name (plump:parent to-flatten)) "p")
+                     (if (and 
+                           (equal (plump:tag-name (plump:parent to-flatten)) "p")
+                           (eq (lquery-funcs:child-index to-flatten) 0)
+                           )
+                         ; If our parent is a <p> and we have added text to our result
+                         ; then add a newline to the end of the result
                          "~:[~a~;~:*~a~%~%~a~]" 
                          "~:[~a~;~:*~a ~a~]" 
                          )
@@ -62,7 +67,7 @@
           while line collect line))) 
 
 (defun save-comments-to-output (comments id output)
-  (if (> (length comments) 0) (format output "~{[comment-start]~a~^[comment-end]~%~}" comments))
+  (if (> (length comments) 0) (format output "~{[comment-start]~a[comment-end]~%~}" comments))
   (with-open-file 
     (stream *result-ids-file*
             :direction :output 
@@ -77,10 +82,9 @@
    :if-exists :append)
  (let ((already-scraped-ids (get-already-scraped-ids)))
     (loop for id across *comment-urls*
-          for x in (list 1 2)
           unless (find id already-scraped-ids :test 'equal)
           do (progn 
-               (sleep 3)
+               (sleep 1)
                (print (list "getting comment for" id))
                (push id already-scraped-ids)
                (save-comments-to-output (get-comments-for-id id) id results-file)))) )
