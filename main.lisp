@@ -1,6 +1,6 @@
 (ql:quickload '("dexador" "plump" "lquery"))
 (defparameter *hn-root-url* "https://news.ycombinator.com")
-(defparameter *request* (dex:get (concatenate 'string *hn-root-url* "/news") ))
+(defparameter *request* (dex:get (concatenate 'string *hn-root-url* "/news?p=1") ))
 (defparameter *parsed-content* (lquery:$ (initialize *request*)))
 (defparameter *results-file* "results.txt")
 (defparameter *result-ids-file* "results-ids.txt")
